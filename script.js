@@ -34,7 +34,7 @@ document.addEventListener("DOMContentLoaded", function () {
       doc.setFontSize(fontSize);
       if (color) doc.setTextColor(color.r, color.g, color.b);
 
-      const lines = doc.splitTextToSize(text, 180); // wrap text
+      const lines = doc.splitTextToSize(text, 180);
       const y = 20;
 
       lines.forEach((line, index) => {
@@ -74,11 +74,12 @@ document.addEventListener("DOMContentLoaded", function () {
   ];
 
   const taskInput = document.getElementById("taskInput");
+  const deadlineInput = document.getElementById("deadlineInput");
   const addTaskButton = document.getElementById("addTask");
   const taskList = document.getElementById("taskList");
   const friendSelect = document.getElementById("friendSelect");
 
-  // Populate the current user selector
+  // Populate friend dropdown
   friends.forEach(friend => {
     const opt = document.createElement("option");
     opt.value = friend.name;
@@ -88,28 +89,27 @@ document.addEventListener("DOMContentLoaded", function () {
 
   const getCurrentUser = () => friendSelect.value;
 
-  function saveTasks() {
-    const taskData = [];
-    document.querySelectorAll(".task-item").forEach(item => {
-      const text = item.querySelector(".task-text").textContent;
-      const pending = Array.from(item.querySelectorAll(".emoji span"))
-        .map(span => span.dataset.friend);
-      taskData.push({ text, pending });
-    });
-    localStorage.setItem("sharedTasks", JSON.stringify(taskData));
-  }
+  addTaskButton.addEventListener("click", () => {
+    const text = taskInput.value.trim();
+    const deadline = deadlineInput.value;
+    if (text) {
+      addTaskToDOM(text, undefined, true, deadline);
+      taskInput.value = "";
+      deadlineInput.value = "";
+      taskInput.focus();
+    }
+  });
 
-  function loadTasks() {
-    const tasks = JSON.parse(localStorage.getItem("sharedTasks")) || [];
-    taskList.innerHTML = "";
-    tasks.forEach(task => addTaskToDOM(task.text, task.pending, false));
-  }
+  taskInput.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") {
+      addTaskButton.click();
+    }
+  });
 
-  function addTaskToDOM(taskText, pendingFriends = friends.map(f => f.name), save = true) {
+  function addTaskToDOM(taskText, pendingFriends = friends.map(f => f.name), save = true, deadline = "") {
     const li = document.createElement("li");
     li.className = "task-item";
 
-    // Create task header with text and delete button
     const taskHeader = document.createElement("div");
     taskHeader.className = "task-header";
 
@@ -133,6 +133,14 @@ document.addEventListener("DOMContentLoaded", function () {
     taskHeader.appendChild(deleteBtn);
     li.appendChild(taskHeader);
 
+    // Deadline
+    if (deadline) {
+      const deadlinePara = document.createElement("p");
+      deadlinePara.className = "task-deadline";
+      deadlinePara.textContent = `⏰ Deadline: ${deadline}`;
+      li.appendChild(deadlinePara);
+    }
+
     const emojiWrapper = document.createElement("div");
     emojiWrapper.className = "emoji";
 
@@ -143,7 +151,6 @@ document.addEventListener("DOMContentLoaded", function () {
       const emojiSpan = document.createElement("span");
       emojiSpan.textContent = friend.emoji;
       emojiSpan.dataset.friend = friend.name;
-      emojiSpan.style.cursor = "pointer";
       emojiSpan.title = friend.name;
 
       emojiSpan.addEventListener("click", () => {
@@ -164,25 +171,26 @@ document.addEventListener("DOMContentLoaded", function () {
     if (save) saveTasks();
   }
 
-  addTaskButton.addEventListener("click", () => {
-    const text = taskInput.value.trim();
-    if (text) {
-      addTaskToDOM(text);
-      taskInput.value = "";
-      taskInput.focus();
-    }
-  });
+  function saveTasks() {
+    const taskData = [];
+    document.querySelectorAll(".task-item").forEach(item => {
+      const text = item.querySelector(".task-text").textContent;
+      const deadline = item.querySelector(".task-deadline")?.textContent.replace("⏰ Deadline: ", "") || "";
+      const pending = Array.from(item.querySelectorAll(".emoji span"))
+        .map(span => span.dataset.friend);
+      taskData.push({ text, pending, deadline });
+    });
+    localStorage.setItem("sharedTasks", JSON.stringify(taskData));
+  }
 
-  // Add task when pressing Enter key
-  taskInput.addEventListener("keypress", (e) => {
-    if (e.key === "Enter") {
-      addTaskButton.click();
-    }
-  });
+  function loadTasks() {
+    const tasks = JSON.parse(localStorage.getItem("sharedTasks")) || [];
+    taskList.innerHTML = "";
+    tasks.forEach(task => addTaskToDOM(task.text, task.pending, false, task.deadline));
+  }
 
   loadTasks();
 
-  // Shared
   function hexToRgb(hex) {
     const m = hex.match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i);
     return m ? {
