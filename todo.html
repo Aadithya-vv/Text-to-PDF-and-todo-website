@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>To-Do List with Bookmarks</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="todo.html">To-Do List</a>
+  </nav>
+
+  <div class="container">
+    <h2>Shared To-Do List</h2>
+
+    <label for="friendSelect">Who's using it now?</label>
+    <select id="friendSelect"></select>
+
+
+    <div class="task-controls">
+        <input type="text" id="taskInput" placeholder="Add a new task..." />
+        <button id="addTask">Add Task</button>
+      </div>
+    <ul id="taskList"></ul>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
