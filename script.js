@@ -93,29 +93,29 @@ document.addEventListener("DOMContentLoaded", function () {
     const text = taskInput.value.trim();
     const deadline = deadlineInput.value;
     if (text) {
-      addTaskToDOM(text, undefined, true, deadline);
+      const newTask = {
+        text,
+        deadline,
+        pending: friends.map(f => f.name)
+      };
+      const taskKey = db.ref().child("sharedTasks").push().key;
+      db.ref("sharedTasks/" + taskKey).set(newTask);
       taskInput.value = "";
       deadlineInput.value = "";
-      taskInput.focus();
     }
   });
 
-  taskInput.addEventListener("keypress", (e) => {
-    if (e.key === "Enter") {
-      addTaskButton.click();
-    }
-  });
-
-  function addTaskToDOM(taskText, pendingFriends = friends.map(f => f.name), save = true, deadline = "") {
+  function addTaskToDOM(taskId, taskData) {
     const li = document.createElement("li");
     li.className = "task-item";
+    li.dataset.id = taskId;
 
     const taskHeader = document.createElement("div");
     taskHeader.className = "task-header";
 
     const textSpan = document.createElement("span");
     textSpan.className = "task-text";
-    textSpan.textContent = taskText;
+    textSpan.textContent = taskData.text;
 
     const deleteBtn = document.createElement("button");
     deleteBtn.innerHTML = "&times;";
@@ -124,8 +124,7 @@ document.addEventListener("DOMContentLoaded", function () {
     deleteBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       if (confirm("Are you sure you want to delete this task?")) {
-        li.remove();
-        saveTasks();
+        db.ref("sharedTasks/" + taskId).remove();
       }
     });
 
@@ -133,18 +132,18 @@ document.addEventListener("DOMContentLoaded", function () {
     taskHeader.appendChild(deleteBtn);
     li.appendChild(taskHeader);
 
-    // Deadline
-    if (deadline) {
+    // Deadline display
+    if (taskData.deadline) {
       const deadlinePara = document.createElement("p");
       deadlinePara.className = "task-deadline";
-      deadlinePara.textContent = `⏰ Deadline: ${deadline}`;
+      deadlinePara.textContent = `⏰ Deadline: ${taskData.deadline}`;
       li.appendChild(deadlinePara);
     }
 
     const emojiWrapper = document.createElement("div");
     emojiWrapper.className = "emoji";
 
-    pendingFriends.forEach(friendName => {
+    taskData.pending.forEach(friendName => {
       const friend = friends.find(f => f.name === friendName);
       if (!friend) return;
 
@@ -158,8 +157,8 @@ document.addEventListener("DOMContentLoaded", function () {
           alert(`Only ${friend.name} can remove their emoji!`);
           return;
         }
-        emojiSpan.remove();
-        saveTasks();
+        const updatedPending = taskData.pending.filter(name => name !== friend.name);
+        db.ref("sharedTasks/" + taskId + "/pending").set(updatedPending);
       });
 
       emojiWrapper.appendChild(emojiSpan);
@@ -167,36 +166,15 @@ document.addEventListener("DOMContentLoaded", function () {
 
     li.appendChild(emojiWrapper);
     taskList.appendChild(li);
-
-    if (save) saveTasks();
   }
 
-  function saveTasks() {
-    const taskData = [];
-    document.querySelectorAll(".task-item").forEach(item => {
-      const text = item.querySelector(".task-text").textContent;
-      const deadline = item.querySelector(".task-deadline")?.textContent.replace("⏰ Deadline: ", "") || "";
-      const pending = Array.from(item.querySelectorAll(".emoji span"))
-        .map(span => span.dataset.friend);
-      taskData.push({ text, pending, deadline });
-    });
-    localStorage.setItem("sharedTasks", JSON.stringify(taskData));
-  }
-
-  function loadTasks() {
-    const tasks = JSON.parse(localStorage.getItem("sharedTasks")) || [];
+  function renderTasks(snapshot) {
     taskList.innerHTML = "";
-    tasks.forEach(task => addTaskToDOM(task.text, task.pending, false, task.deadline));
+    const tasks = snapshot.val();
+    for (const taskId in tasks) {
+      addTaskToDOM(taskId, tasks[taskId]);
+    }
   }
 
-  loadTasks();
-
-  function hexToRgb(hex) {
-    const m = hex.match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i);
-    return m ? {
-      r: parseInt(m[1], 16),
-      g: parseInt(m[2], 16),
-      b: parseInt(m[3], 16)
-    } : null;
-  }
+  db.ref("sharedTasks").on("value", renderTasks);
 });
