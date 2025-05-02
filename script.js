@@ -1,12 +1,12 @@
 document.addEventListener("DOMContentLoaded", function () {
-  const fontMap = {
-    Font1: { css: "Times New Roman", pdf: "times" },
-    Font2: { css: "Courier New", pdf: "courier" },
-    Font3: { css: "Arial", pdf: "helvetica" }
-  };
+  // =================== PDF CONVERTER CODE ===================
+  if (document.getElementById('textInput') && document.getElementById('generatePdfBtn')) {
+    const fontMap = {
+      Font1: { css: "Times New Roman", pdf: "times" },
+      Font2: { css: "Courier New", pdf: "courier" },
+      Font3: { css: "Arial", pdf: "helvetica" }
+    };
 
-  // =================== PDF GENERATOR ===================
-  if (document.getElementById("generatePdfBtn")) {
     const generateBtn = document.getElementById("generatePdfBtn");
     const fontSelect = document.getElementById("fontSelect");
     const fontSizeInput = document.getElementById("fontSize");
@@ -14,40 +14,126 @@ document.addEventListener("DOMContentLoaded", function () {
     const alignment = document.getElementById("alignment");
     const preview = document.getElementById("preview");
     const textInput = document.getElementById("textInput");
+    const pdfUpload = document.getElementById("pdfUpload");
 
-    fontSelect.addEventListener("change", updatePreview);
-    textInput.addEventListener("input", updatePreview);
-    updatePreview();
+    let originalPdfStructure = null;
 
-    generateBtn.addEventListener("click", () => {
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF();
-      const text = textInput.value;
-      const fontKey = fontSelect.value;
-      const fontSize = parseInt(fontSizeInput.value, 10) || 16;
-      const color = hexToRgb(colorPicker.value);
-      const align = alignment.value;
+    if (fontSelect && textInput) {
+      fontSelect.addEventListener("change", updatePreview);
+      textInput.addEventListener("input", updatePreview);
+      updatePreview();
+    }
 
-      const { pdf: jsPdfFont } = fontMap[fontKey] || fontMap.Font3;
+    if (pdfUpload) {
+      pdfUpload.addEventListener("change", async function () {
+        const file = pdfUpload.files[0];
+        if (!file || file.type !== "application/pdf") return;
 
-      doc.setFont(jsPdfFont);
-      doc.setFontSize(fontSize);
-      if (color) doc.setTextColor(color.r, color.g, color.b);
+        const reader = new FileReader();
+        reader.onload = async function () {
+          const typedarray = new Uint8Array(this.result);
+          const pdf = await pdfjsLib.getDocument(typedarray).promise;
+          
+          originalPdfStructure = {
+            numPages: pdf.numPages,
+            pages: []
+          };
 
-      const lines = doc.splitTextToSize(text, 180);
-      const y = 20;
+          let fullText = "";
 
-      lines.forEach((line, index) => {
-        let x;
-        if (align === "center") x = 105;
-        else if (align === "right") x = 200;
-        else x = 10;
+          for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const viewport = page.getViewport({ scale: 1.0 });
+            const textContent = await page.getTextContent();
+            
+            const pageStructure = {
+              width: viewport.width,
+              height: viewport.height,
+              items: []
+            };
 
-        doc.text(line, x, y + index * (fontSize + 2), { align });
+            textContent.items.forEach(item => {
+              pageStructure.items.push({
+                str: item.str,
+                transform: item.transform,
+                width: item.width,
+                height: item.height
+              });
+            });
+
+            originalPdfStructure.pages.push(pageStructure);
+            
+            const lines = textContent.items.map(item => item.str.trim()).filter(Boolean);
+            const pageText = lines.join("\n");
+            fullText += pageText;
+            if (i < pdf.numPages) fullText += "\f";
+          }
+
+          textInput.value = fullText;
+          updatePreview();
+        };
+
+        reader.readAsArrayBuffer(file);
       });
+    }
 
-      doc.save("generated.pdf");
-    });
+    if (generateBtn) {
+      generateBtn.addEventListener("click", () => {
+        if (!originalPdfStructure) {
+          alert("Please upload a PDF first to use its structure");
+          return;
+        }
+
+        const jsPDF = window.jspdf.jsPDF;
+        const doc = new jsPDF({
+          orientation: originalPdfStructure.pages[0].width > originalPdfStructure.pages[0].height ? "landscape" : "portrait",
+          unit: "pt",
+          format: [originalPdfStructure.pages[0].width, originalPdfStructure.pages[0].height]
+        });
+
+        const text = textInput.value;
+        const fontKey = fontSelect.value;
+        const fontSize = parseInt(fontSizeInput.value, 10) || 16;
+        const color = hexToRgb(colorPicker.value);
+        const align = alignment.value;
+        const { pdf: jsPdfFont } = fontMap[fontKey] || fontMap.Font3;
+
+        doc.setFont(jsPdfFont);
+        doc.setFontSize(fontSize);
+        if (color) doc.setTextColor(color.r, color.g, color.b);
+
+        const pages = text.split("\f");
+        
+        for (let i = 0; i < originalPdfStructure.numPages; i++) {
+          if (i > 0) {
+            doc.addPage([originalPdfStructure.pages[i].width, originalPdfStructure.pages[i].height]);
+          }
+          
+          const pageText = pages[i] || "";
+          const originalPage = originalPdfStructure.pages[i];
+          
+          const lines = doc.splitTextToSize(pageText, originalPage.width - 40);
+          
+          let y = 40;
+          lines.forEach(line => {
+            let x;
+            if (align === "center") x = originalPage.width / 2;
+            else if (align === "right") x = originalPage.width - 20;
+            else x = 20;
+
+            doc.text(line, x, y, { align });
+            y += fontSize * 1.5;
+            
+            if (y > originalPage.height - 20) {
+              doc.addPage([originalPage.width, originalPage.height]);
+              y = 40;
+            }
+          });
+        }
+
+        doc.save("generated.pdf");
+      });
+    }
 
     function updatePreview() {
       const selectedFont = fontSelect.value;
@@ -55,126 +141,188 @@ document.addEventListener("DOMContentLoaded", function () {
       preview.style.fontFamily = fontMap[selectedFont]?.css || "Arial";
       preview.textContent = sample;
     }
+
+    function hexToRgb(hex) {
+      const bigint = parseInt(hex.slice(1), 16);
+      return {
+        r: (bigint >> 16) & 255,
+        g: (bigint >> 8) & 255,
+        b: bigint & 255
+      };
+    }
   }
 
-  // =================== TO-DO LIST ===================
-  const friends = [
-    { name: "Alice", emoji: "🐱" },
-    { name: "Bob", emoji: "🐶" },
-    { name: "Cara", emoji: "🐼" },
-    { name: "Dan", emoji: "🦊" },
-    { name: "Eva", emoji: "🐰" },
-    { name: "Finn", emoji: "🐸" },
-    { name: "Gina", emoji: "🐥" },
-    { name: "Hank", emoji: "🐯" },
-    { name: "Ivy", emoji: "🦁" },
-    { name: "Jay", emoji: "🐨" },
-    { name: "Kay", emoji: "🐷" },
-    { name: "Leo", emoji: "🐻" }
-  ];
+  // =================== TO-DO LIST CODE ===================
+  if (document.getElementById('taskInput') && document.getElementById('taskList')) {
+    const friends = [
+      { name: "Aadithya", emoji: "🐱" },
+      { name: "Kishor", emoji: "🐶" },
+      { name: "Arun", emoji: "🐼" },
+      { name: "Dharakeshwar", emoji: "🦊" },
+      { name: "Karthik", emoji: "🐰" },
+      { name: "Baradhwaj", emoji: "🐸" },
+      { name: "Ammu", emoji: "🐥" },
+      { name: "Achu", emoji: "🐯" },
+      { name: "Jameela", emoji: "🦁" },
+      { name: "Lakshya", emoji: "🐨" },
+      { name: "Meena", emoji: "🐷" },
+      { name: "Krithiga", emoji: "🐻" }
+    ];
 
-  const taskInput = document.getElementById("taskInput");
-  const deadlineInput = document.getElementById("deadlineInput");
-  const addTaskButton = document.getElementById("addTask");
-  const taskList = document.getElementById("taskList");
-  const friendSelect = document.getElementById("friendSelect");
+    const taskInput = document.getElementById("taskInput");
+    const startDateInput = document.getElementById("startDateInput");
+    const endDateInput = document.getElementById("endDateInput");
+    const addTaskButton = document.getElementById("addTask");
+    const taskList = document.getElementById("taskList");
+    const friendSelect = document.getElementById("friendSelect");
 
-  // Populate friend dropdown
-  friends.forEach(friend => {
-    const opt = document.createElement("option");
-    opt.value = friend.name;
-    opt.textContent = `${friend.emoji} ${friend.name}`;
-    friendSelect.appendChild(opt);
-  });
+    const db = firebase.database();
 
-  const getCurrentUser = () => friendSelect.value;
-
-  addTaskButton.addEventListener("click", () => {
-    const text = taskInput.value.trim();
-    const deadline = deadlineInput.value;
-    if (text) {
-      const newTask = {
-        text,
-        deadline,
-        pending: friends.map(f => f.name)
-      };
-      const taskKey = db.ref().child("sharedTasks").push().key;
-      db.ref("sharedTasks/" + taskKey).set(newTask);
-      taskInput.value = "";
-      deadlineInput.value = "";
+    function populateFriendDropdown() {
+      friendSelect.innerHTML = '';
+      friends.forEach(friend => {
+        const opt = document.createElement("option");
+        opt.value = friend.name;
+        opt.textContent = `${friend.emoji} ${friend.name}`;
+        friendSelect.appendChild(opt);
+      });
     }
-  });
 
-  function addTaskToDOM(taskId, taskData) {
-    const li = document.createElement("li");
-    li.className = "task-item";
-    li.dataset.id = taskId;
+    populateFriendDropdown();
 
-    const taskHeader = document.createElement("div");
-    taskHeader.className = "task-header";
+    function getCurrentUser() {
+      return friendSelect.value;
+    }
 
-    const textSpan = document.createElement("span");
-    textSpan.className = "task-text";
-    textSpan.textContent = taskData.text;
+    addTaskButton.addEventListener("click", () => {
+      const text = taskInput.value.trim();
+      const startDate = startDateInput.value;
+      const endDate = endDateInput.value;
+      
+      if (text) {
+        if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
+          alert("End date must be after start date!");
+          return;
+        }
 
-    const deleteBtn = document.createElement("button");
-    deleteBtn.innerHTML = "&times;";
-    deleteBtn.className = "delete-task";
-    deleteBtn.title = "Delete task";
-    deleteBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      if (confirm("Are you sure you want to delete this task?")) {
-        db.ref("sharedTasks/" + taskId).remove();
+        const newTask = {
+          text,
+          startDate: startDate || null,
+          endDate: endDate || null,
+          pending: friends.map(f => f.name),
+          createdAt: firebase.database.ServerValue.TIMESTAMP
+        };
+        
+        const taskRef = db.ref("sharedTasks").push();
+        taskRef.set(newTask)
+          .then(() => {
+            taskInput.value = "";
+            startDateInput.value = "";
+            endDateInput.value = "";
+          })
+          .catch(error => {
+            console.error("Error adding task: ", error);
+          });
       }
     });
 
-    taskHeader.appendChild(textSpan);
-    taskHeader.appendChild(deleteBtn);
-    li.appendChild(taskHeader);
+    function addTaskToDOM(taskId, taskData) {
+      const li = document.createElement("li");
+      li.className = "task-item";
+      li.dataset.id = taskId;
 
-    // Deadline display
-    if (taskData.deadline) {
-      const deadlinePara = document.createElement("p");
-      deadlinePara.className = "task-deadline";
-      deadlinePara.textContent = `⏰ Deadline: ${taskData.deadline}`;
-      li.appendChild(deadlinePara);
-    }
+      const taskHeader = document.createElement("div");
+      taskHeader.className = "task-header";
 
-    const emojiWrapper = document.createElement("div");
-    emojiWrapper.className = "emoji";
+      const textSpan = document.createElement("span");
+      textSpan.className = "task-text";
+      textSpan.textContent = taskData.text;
 
-    taskData.pending.forEach(friendName => {
-      const friend = friends.find(f => f.name === friendName);
-      if (!friend) return;
-
-      const emojiSpan = document.createElement("span");
-      emojiSpan.textContent = friend.emoji;
-      emojiSpan.dataset.friend = friend.name;
-      emojiSpan.title = friend.name;
-
-      emojiSpan.addEventListener("click", () => {
-        if (getCurrentUser() !== friend.name) {
-          alert(`Only ${friend.name} can remove their emoji!`);
-          return;
+      const deleteBtn = document.createElement("button");
+      deleteBtn.innerHTML = "&times;";
+      deleteBtn.className = "delete-task";
+      deleteBtn.title = "Delete task";
+      deleteBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (confirm("Are you sure you want to delete this task?")) {
+          db.ref("sharedTasks/" + taskId).remove();
         }
-        const updatedPending = taskData.pending.filter(name => name !== friend.name);
-        db.ref("sharedTasks/" + taskId + "/pending").set(updatedPending);
       });
 
-      emojiWrapper.appendChild(emojiSpan);
-    });
+      taskHeader.appendChild(textSpan);
+      taskHeader.appendChild(deleteBtn);
+      li.appendChild(taskHeader);
 
-    li.appendChild(emojiWrapper);
-    taskList.appendChild(li);
-  }
+      if (taskData.startDate || taskData.endDate) {
+        const datesPara = document.createElement("p");
+        datesPara.className = "task-dates";
+        
+        let datesText = "";
+        if (taskData.startDate && taskData.endDate) {
+          datesText = `📅 ${formatDate(taskData.startDate)} - ${formatDate(taskData.endDate)}`;
+        } else if (taskData.startDate) {
+          datesText = `⏳ Starts: ${formatDate(taskData.startDate)}`;
+        } else if (taskData.endDate) {
+          datesText = `⏰ Ends: ${formatDate(taskData.endDate)}`;
+        }
+        
+        datesPara.textContent = datesText;
+        li.appendChild(datesPara);
+      }
 
-  function renderTasks(snapshot) {
-    taskList.innerHTML = "";
-    const tasks = snapshot.val();
-    for (const taskId in tasks) {
-      addTaskToDOM(taskId, tasks[taskId]);
+      const emojiWrapper = document.createElement("div");
+      emojiWrapper.className = "emoji";
+
+      if (taskData.pending && taskData.pending.length > 0) {
+        taskData.pending.forEach(friendName => {
+          const friend = friends.find(f => f.name === friendName);
+          if (!friend) return;
+
+          const emojiSpan = document.createElement("span");
+          emojiSpan.textContent = friend.emoji;
+          emojiSpan.dataset.friend = friend.name;
+          emojiSpan.title = friend.name;
+
+          emojiSpan.addEventListener("click", () => {
+            if (getCurrentUser() !== friend.name) {
+              alert(`Only ${friend.name} can remove their emoji!`);
+              return;
+            }
+            const updatedPending = taskData.pending.filter(name => name !== friend.name);
+            db.ref("sharedTasks/" + taskId + "/pending").set(updatedPending);
+          });
+
+          emojiWrapper.appendChild(emojiSpan);
+        });
+      }
+
+      li.appendChild(emojiWrapper);
+      taskList.appendChild(li);
     }
-  }
 
-  db.ref("sharedTasks").on("value", renderTasks);
+    function formatDate(dateString) {
+      if (!dateString) return '';
+      const options = { year: 'numeric', month: 'short', day: 'numeric' };
+      return new Date(dateString).toLocaleDateString(undefined, options);
+    }
+
+    function renderTasks(snapshot) {
+      taskList.innerHTML = "";
+      const tasks = snapshot.val();
+      
+      if (!tasks) {
+        taskList.innerHTML = "<p>No tasks yet. Add one above!</p>";
+        return;
+      }
+
+      const tasksArray = Object.entries(tasks).map(([id, task]) => ({ id, ...task }));
+      tasksArray.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+
+      tasksArray.forEach(task => {
+        addTaskToDOM(task.id, task);
+      });
+    }
+
+    db.ref("sharedTasks").on("value", renderTasks);
+  }
 });
