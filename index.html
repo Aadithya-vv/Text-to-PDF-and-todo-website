@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Text to PDF Converter</title>
   <link rel="stylesheet" href="styles.css" />
+  
+  <!-- PDF.js for reading uploaded PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.14.305/pdf.min.js"></script>
 </head>
 <body>
   <nav>
@@ -16,6 +19,9 @@
     <h1>Text to PDF Converter</h1>
 
     <textarea id="textInput" placeholder="Enter text here..."></textarea>
+
+    <label for="pdfUpload">Upload a PDF to convert text:</label>
+    <input type="file" id="pdfUpload" accept=".pdf" />
 
     <label for="fontSelect">Select Font:</label>
     <select id="fontSelect">
@@ -42,7 +48,8 @@
     <button id="generatePdfBtn">Download PDF</button>
   </div>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
+  <!-- jsPDF must come before your script -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="script.js"></script>
 </body>
 </html>
