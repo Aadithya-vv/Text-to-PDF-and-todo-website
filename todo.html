@@ -5,24 +5,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>To-Do List with Firebase</title>
   <link rel="stylesheet" href="styles.css" />
-
-  <!-- Firebase SDKs -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
-
+  
+  <!-- Firebase SDKs (version 8) -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  
+  <!-- Firebase Initialization -->
   <script>
     const firebaseConfig = {
-        apiKey: "AIzaSyCcgBivqYmxAlQ6SVDX_4ZTe4wuuCt4Qwg",
-  authDomain: "todosync-79a1b.firebaseapp.com",
-  databaseURL: "https://todosync-79a1b-default-rtdb.firebaseio.com",
-  projectId: "todosync-79a1b",
-  storageBucket: "todosync-79a1b.firebasestorage.app",
-  messagingSenderId: "578629075775",
-  appId: "1:578629075775:web:407583dda3c680355ec98a",
-  measurementId: "G-833MH01K0Y"
+      apiKey: "AIzaSyCcgBivqYmxAlQ6SVDX_4ZTe4wuuCt4Qwg",
+      authDomain: "todosync-79a1b.firebaseapp.com",
+      databaseURL: "https://todosync-79a1b-default-rtdb.firebaseio.com",
+      projectId: "todosync-79a1b",
+      storageBucket: "todosync-79a1b.firebasestorage.app",
+      messagingSenderId: "578629075775",
+      appId: "1:578629075775:web:407583dda3c680355ec98a",
+      measurementId: "G-833MH01K0Y"
     };
     firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
   </script>
 </head>
 <body>
@@ -39,7 +39,8 @@
 
     <div class="task-controls">
       <input type="text" id="taskInput" placeholder="Add a new task..." />
-      <input type="date" id="deadlineInput" />
+      <input type="date" id="startDateInput" placeholder="Start date" />
+      <input type="date" id="endDateInput" placeholder="End date" />
       <button id="addTask">Add Task</button>
     </div>
 
