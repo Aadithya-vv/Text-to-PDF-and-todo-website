@@ -317,3 +317,54 @@
   margin: 0.5rem 0;
   font-style: italic;
 }
+/* Playlist Styles */
+.playlist-section {
+  border: 2px solid #ccc;
+  border-radius: 12px;
+  padding: 16px;
+  margin: 20px 0;
+  background-color: #f9f9f9;
+}
+
+.playlist-section h3 {
+  margin-bottom: 8px;
+  color: #333;
+}
+
+.chapter-section {
+  border-top: 1px dashed #aaa;
+  padding-top: 10px;
+  margin-top: 10px;
+}
+
+.chapter-section h4 {
+  color: #555;
+  margin-bottom: 10px;
+}
+
+.video-card {
+  margin-bottom: 20px;
+  padding: 8px;
+  border-radius: 8px;
+  background-color: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+.video-card iframe {
+  border-radius: 8px;
+}
+
+.video-card button {
+  background-color: #e74c3c;
+  color: #fff;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-top: 6px;
+  font-size: 14px;
+}
+
+.video-card button:hover {
+  background-color: #c0392b;
+}
