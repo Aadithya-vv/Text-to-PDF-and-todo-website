@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+        <title>Math Video Playlists</title>
+        <link rel="stylesheet" href="styles.css" />
+      
+        <!-- Firebase SDKs -->
+        <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+        <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+        <script>
+          const firebaseConfig = {
+            apiKey: "AIzaSyCcgBivqYmxAlQ6SVDX_4ZTe4wuuCt4Qwg",
+            authDomain: "todosync-79a1b.firebaseapp.com",
+            databaseURL: "https://todosync-79a1b-default-rtdb.firebaseio.com",
+            projectId: "todosync-79a1b",
+            storageBucket: "todosync-79a1b.appspot.com",
+            messagingSenderId: "578629075775",
+            appId: "1:578629075775:web:407583dda3c680355ec98a"
+          };
+          firebase.initializeApp(firebaseConfig);
+          const db = firebase.database();
+        </script>
+      </head>
+      
+<body>
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="todo.html">To-Do List</a>
+    <a href="videos.html">Math Videos</a>
+  </nav>
+
+  <div class="container">
+    <h2>Create Chapter Playlists</h2>
+
+    <label for="teacherSelect">Select Teacher</label>
+    <select id="teacherSelect">
+      <option value="teacher1">Teacher 1</option>
+      <option value="teacher2">Teacher 2</option>
+      <option value="teacher3">Teacher 3</option>
+    </select>
+
+    <label for="chapterTitle">Chapter Title</label>
+    <input type="text" id="chapterTitle" placeholder="e.g., Algebra Basics" />
+
+    <label for="videoUrl">Video URL</label>
+    <input type="text" id="videoUrl" placeholder="Paste YouTube video URL" />
+
+    <button onclick="addVideo()">Add to Playlist</button>
+
+    <div id="playlistContainer"></div>
+  </div>
+
+  <script src="video-script.js"></script>
+</body>
+</html>
